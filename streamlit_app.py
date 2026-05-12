@@ -679,51 +679,50 @@ with tab_dash:
         st.info("Weather unavailable — click 'Refresh weather' in the sidebar.")
 
     st.divider()
-    require_plants_ok = require_plants()
-    if require_plants_ok:
+    if require_plants():
         df = st.session_state.plants_df
         n_set       = int((df["actual_sun"].notna() & (df["actual_sun"] != "")).sum())
-    mismatches  = [(row, sun_mismatch(row.get("sun_needed"), row.get("actual_sun")))
-                   for _, row in df.iterrows()
-                   if sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))]
-    month_tasks = tasks_this_month(df, today.month)
+        mismatches  = [(row, sun_mismatch(row.get("sun_needed"), row.get("actual_sun")))
+                       for _, row in df.iterrows()
+                       if sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))]
+        month_tasks = tasks_this_month(df, today.month)
 
-    if st.session_state.plants_from_plan:
-        st.markdown("""<div class="bridge-banner">
-          🔗 Plants were generated from <strong>🗺️ Planning</strong>.
-          Set sun positions in the <strong>☀️ Sun Setup</strong> tab for a full mismatch analysis.
-        </div>""", unsafe_allow_html=True)
+        if st.session_state.plants_from_plan:
+            st.markdown("""<div class="bridge-banner">
+              🔗 Plants were generated from <strong>🗺️ Planning</strong>.
+              Set sun positions in the <strong>☀️ Sun Setup</strong> tab for a full mismatch analysis.
+            </div>""", unsafe_allow_html=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("🌱 Plants", len(df))
-    c2.metric("☀️ Sun positions set", f"{n_set}/{len(df)}")
-    c3.metric("⚠️ Mismatches", len(mismatches))
-    c4.metric(f"📅 Tasks for {MONTH_NAMES[today.month]}", len(month_tasks))
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🌱 Plants", len(df))
+        c2.metric("☀️ Sun positions set", f"{n_set}/{len(df)}")
+        c3.metric("⚠️ Mismatches", len(mismatches))
+        c4.metric(f"📅 Tasks for {MONTH_NAMES[today.month]}", len(month_tasks))
 
-    st.markdown(f'<div class="sec-hdr">📅 Tasks for {MONTH_NAMES[today.month]}</div>', unsafe_allow_html=True)
-    render_tasks_by_type(month_tasks, MONTH_NAMES[today.month])
+        st.markdown(f'<div class="sec-hdr">📅 Tasks for {MONTH_NAMES[today.month]}</div>', unsafe_allow_html=True)
+        render_tasks_by_type(month_tasks, MONTH_NAMES[today.month])
 
-    col_l, col_r = st.columns(2)
-    with col_l:
-        if mismatches:
-            st.markdown('<div class="sec-hdr">⚠️ Placement mismatches</div>', unsafe_allow_html=True)
-            for row, mtype in mismatches:
-                needed = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"?")
-                actual = SUN_OPTIONS.get(str(row.get("actual_sun") or ""),"?")
-                msg = f"Gets <b>{actual}</b> but needs <b>{needed}</b> — {'too much sun.' if mtype=='over' else 'too little sun.'}"
-                st.markdown(f"""<div class="mismatch-card {'severe' if mtype=='over' else ''}">
-                  <div class="mismatch-name">{row['name']}</div>
-                  <div class="mismatch-body">{msg}</div></div>""", unsafe_allow_html=True)
-    with col_r:
-        if wx.get("ok"):
-            st.markdown('<div class="sec-hdr">🔔 Weather alerts</div>', unsafe_allow_html=True)
-            alerts = []
-            if wx["frost_risk"]:  alerts.append("❄️ **Frost expected** — protect frost-sensitive plants.")
-            if wx["soil_dry"]:    alerts.append("💧 **Soil is dry** — water deeply, morning or evening.")
-            if wx["uv"] >= 7:     alerts.append("☀️ **High UV** — avoid transplanting. Water early.")
-            if wx["heavy_rain"]:  alerts.append("🌧️ Heavy rain forecast — skip feeding this week.")
-            if not alerts:        alerts.append("✅ No urgent alerts — a good week for routine tasks.")
-            for a in alerts: st.markdown(f"- {a}")
+        col_l, col_r = st.columns(2)
+        with col_l:
+            if mismatches:
+                st.markdown('<div class="sec-hdr">⚠️ Placement mismatches</div>', unsafe_allow_html=True)
+                for row, mtype in mismatches:
+                    needed = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"?")
+                    actual = SUN_OPTIONS.get(str(row.get("actual_sun") or ""),"?")
+                    msg = f"Gets <b>{actual}</b> but needs <b>{needed}</b> — {'too much sun.' if mtype=='over' else 'too little sun.'}"
+                    st.markdown(f"""<div class="mismatch-card {'severe' if mtype=='over' else ''}">
+                      <div class="mismatch-name">{row['name']}</div>
+                      <div class="mismatch-body">{msg}</div></div>""", unsafe_allow_html=True)
+        with col_r:
+            if wx.get("ok"):
+                st.markdown('<div class="sec-hdr">🔔 Weather alerts</div>', unsafe_allow_html=True)
+                alerts = []
+                if wx["frost_risk"]:  alerts.append("❄️ **Frost expected** — protect frost-sensitive plants.")
+                if wx["soil_dry"]:    alerts.append("💧 **Soil is dry** — water deeply, morning or evening.")
+                if wx["uv"] >= 7:     alerts.append("☀️ **High UV** — avoid transplanting. Water early.")
+                if wx["heavy_rain"]:  alerts.append("🌧️ Heavy rain forecast — skip feeding this week.")
+                if not alerts:        alerts.append("✅ No urgent alerts — a good week for routine tasks.")
+                for a in alerts: st.markdown(f"- {a}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — CARE SCHEDULE
