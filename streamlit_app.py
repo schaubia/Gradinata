@@ -249,10 +249,12 @@ def render_tasks_by_type(tasks, month_name=""):
         </div>''', unsafe_allow_html=True)
 
 
-def require_plants():
+def require_plants() -> bool:
+    """Returns True if plants are loaded, False (with info message) if not."""
     if st.session_state.plants_df is None:
         st.info("📂 Upload your plant list via the sidebar, or generate plants from the **🗺️ Planning** tab first.")
-        st.stop()
+        return False
+    return True
 
 
 # ── THE BRIDGE: Convert garden_plan results → garden_org plants_df ────────────
@@ -524,9 +526,9 @@ with tab_plan:
         The other tabs (Dashboard, Care Schedule, Sun Setup, Template) work without them —
         just upload a CSV via the sidebar.
         """)
-        st.stop()
 
-    st.markdown("# 🗺️ Garden Planning")
+    if PLANNER_AVAILABLE:
+        st.markdown("# 🗺️ Garden Planning")
     st.caption("Generate personalised plant recommendations based on your location's real climate and soil data.")
 
     with st.expander("⚙️ Settings", expanded=True):
@@ -677,9 +679,10 @@ with tab_dash:
         st.info("Weather unavailable — click 'Refresh weather' in the sidebar.")
 
     st.divider()
-    require_plants()
-    df = st.session_state.plants_df
-    n_set       = int((df["actual_sun"].notna() & (df["actual_sun"] != "")).sum())
+    require_plants_ok = require_plants()
+    if require_plants_ok:
+        df = st.session_state.plants_df
+        n_set       = int((df["actual_sun"].notna() & (df["actual_sun"] != "")).sum())
     mismatches  = [(row, sun_mismatch(row.get("sun_needed"), row.get("actual_sun")))
                    for _, row in df.iterrows()
                    if sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))]
@@ -727,8 +730,8 @@ with tab_dash:
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_care:
     st.markdown("# 📋 Care Schedule")
-    require_plants()
-    df = st.session_state.plants_df
+    if require_plants():
+        df = st.session_state.plants_df
     CARE_COLORS = {
         "pruning":  ("#eaf2e0","#2c5015","✂️ Pruning"),
         "feeding":  ("#f0f7e8","#1a5226","🌿 Feeding"),
@@ -793,9 +796,8 @@ with tab_care:
 with tab_sun:
     st.markdown("# ☀️ Sun Setup")
     st.caption("Tell the app how much sun each plant actually gets in its current spot.")
-    require_plants()
-
-    bc1, bc2, bc3, bc4, bc5 = st.columns([2.5,1.2,1.5,1.3,1])
+    if require_plants():
+        bc1, bc2, bc3, bc4, bc5 = st.columns([2.5,1.2,1.5,1.3,1])
     bulk_q = bc1.text_input("Filter (empty = all)", placeholder="e.g. rose…", label_visibility="collapsed")
     mask   = (st.session_state.plants_df["name"].str.contains(bulk_q, case=False, na=False)
               if bulk_q else pd.Series([True]*len(st.session_state.plants_df)))
