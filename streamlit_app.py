@@ -730,63 +730,63 @@ with tab_care:
     st.markdown("# 📋 Care Schedule")
     if require_plants():
         df = st.session_state.plants_df
-    CARE_COLORS = {
-        "pruning":  ("#eaf2e0","#2c5015","✂️ Pruning"),
-        "feeding":  ("#f0f7e8","#1a5226","🌿 Feeding"),
-        "watering": ("#e8f3fb","#1a3a5c","💧 Watering"),
-    }
-    view = st.radio("View", ["📅 By month","🌿 By plant","⚠️ Mismatches only"], horizontal=True)
-    st.divider()
+        CARE_COLORS = {
+            "pruning":  ("#eaf2e0","#2c5015","✂️ Pruning"),
+            "feeding":  ("#f0f7e8","#1a5226","🌿 Feeding"),
+            "watering": ("#e8f3fb","#1a3a5c","💧 Watering"),
+        }
+        view = st.radio("View", ["📅 By month","🌿 By plant","⚠️ Mismatches only"], horizontal=True)
+        st.divider()
 
-    if view == "📅 By month":
-        month_sel = st.selectbox("Month", list(MONTH_NAMES.values()), index=today.month - 1)
-        month_num = list(MONTH_NAMES.values()).index(month_sel) + 1
-        tasks = tasks_this_month(df, month_num)
-        if tasks: st.caption(f"**{len(tasks)} tasks** scheduled for {month_sel}")
-        render_tasks_by_type(tasks, month_sel)
+        if view == "📅 By month":
+            month_sel = st.selectbox("Month", list(MONTH_NAMES.values()), index=today.month - 1)
+            month_num = list(MONTH_NAMES.values()).index(month_sel) + 1
+            tasks = tasks_this_month(df, month_num)
+            if tasks: st.caption(f"**{len(tasks)} tasks** scheduled for {month_sel}")
+            render_tasks_by_type(tasks, month_sel)
 
-    elif view == "🌿 By plant":
-        search  = st.text_input("🔍 Search plant", placeholder="Type name…")
-        show_df = df[df["name"].str.contains(search, case=False, na=False)] if search else df
-        for _, row in show_df.iterrows():
-            mtype = sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))
-            warn  = "⚠️ " if mtype else ("✅ " if row.get("actual_sun") else "○ ")
-            with st.expander(f"{warn}**{row['name']}**{'  🫙' if row.get('is_bulb') else ''} · {SUN_OPTIONS.get(str(row.get('sun_needed') or ''),'?')}"):
-                if row.get("latin"): st.caption(f"*{row['latin']}*")
-                for care_key, (bg, fg, title) in CARE_COLORS.items():
-                    text = row.get(care_key) or lookup_care(row.get("latin"))[care_key]
-                    month_key = care_key + "_months"
-                    months_active = months_list(row.get(month_key) or lookup_care(row.get("latin")).get(month_key,""))
-                    badge = (f" <span style='background:#3d6b1e;color:white;border-radius:10px;"
-                             f"padding:1px 8px;font-size:0.72rem;'>📅 Due this month</span>"
-                             if today.month in months_active else "")
-                    st.markdown(f"""<div class="care-card" style="background:{bg}">
-                      <div class="care-title" style="color:{fg}">{title}{badge}</div>
-                      <div class="care-body">{text}</div></div>""", unsafe_allow_html=True)
-                if mtype:
-                    n_lbl = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"?")
-                    a_lbl = SUN_OPTIONS.get(str(row.get("actual_sun") or ""),"?")
-                    st.markdown(f"""<div class="care-card" style="background:#fdecea;border:1.5px solid #c0392b">
-                      <div class="care-title" style="color:#c0392b">⚠️ Placement problem</div>
-                      <div class="care-body">Gets <b>{a_lbl}</b> but needs <b>{n_lbl}</b> — {'too much sun.' if mtype=='over' else 'too little sun.'}</div>
-                    </div>""", unsafe_allow_html=True)
+        elif view == "🌿 By plant":
+            search  = st.text_input("🔍 Search plant", placeholder="Type name…")
+            show_df = df[df["name"].str.contains(search, case=False, na=False)] if search else df
+            for _, row in show_df.iterrows():
+                mtype = sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))
+                warn  = "⚠️ " if mtype else ("✅ " if row.get("actual_sun") else "○ ")
+                with st.expander(f"{warn}**{row['name']}**{'  🫙' if row.get('is_bulb') else ''} · {SUN_OPTIONS.get(str(row.get('sun_needed') or ''),'?')}"):
+                    if row.get("latin"): st.caption(f"*{row['latin']}*")
+                    for care_key, (bg, fg, title) in CARE_COLORS.items():
+                        text = row.get(care_key) or lookup_care(row.get("latin"))[care_key]
+                        month_key = care_key + "_months"
+                        months_active = months_list(row.get(month_key) or lookup_care(row.get("latin")).get(month_key,""))
+                        badge = (f" <span style='background:#3d6b1e;color:white;border-radius:10px;"
+                                 f"padding:1px 8px;font-size:0.72rem;'>📅 Due this month</span>"
+                                 if today.month in months_active else "")
+                        st.markdown(f"""<div class="care-card" style="background:{bg}">
+                          <div class="care-title" style="color:{fg}">{title}{badge}</div>
+                          <div class="care-body">{text}</div></div>""", unsafe_allow_html=True)
+                    if mtype:
+                        n_lbl = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"?")
+                        a_lbl = SUN_OPTIONS.get(str(row.get("actual_sun") or ""),"?")
+                        st.markdown(f"""<div class="care-card" style="background:#fdecea;border:1.5px solid #c0392b">
+                          <div class="care-title" style="color:#c0392b">⚠️ Placement problem</div>
+                          <div class="care-body">Gets <b>{a_lbl}</b> but needs <b>{n_lbl}</b> — {'too much sun.' if mtype=='over' else 'too little sun.'}</div>
+                        </div>""", unsafe_allow_html=True)
 
-    else:
-        mismatch_df = df[df.apply(
-            lambda r: sun_mismatch(r.get("sun_needed"), r.get("actual_sun")) is not None, axis=1)]
-        if mismatch_df.empty:
-            st.success("✅ All plants are correctly placed!")
         else:
-            st.caption(f"**{len(mismatch_df)} plants** with placement issues")
-            for _, row in mismatch_df.iterrows():
-                mtype  = sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))
-                needed = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"?")
-                actual = SUN_OPTIONS.get(str(row.get("actual_sun") or ""),"?")
-                with st.expander(f"⚠️ **{row['name']}** — needs {needed}, gets {actual}"):
-                    st.markdown(f"""<div class="care-card" style="background:#fdecea;border:1.5px solid #c0392b">
-                      <div class="care-title" style="color:#c0392b">⚠️ Placement problem</div>
-                      <div class="care-body">{"Too much sun — may scorch or dry out." if mtype=='over' else "Too little sun — likely poor flowering and weak growth."}</div>
-                    </div>""", unsafe_allow_html=True)
+            mismatch_df = df[df.apply(
+                lambda r: sun_mismatch(r.get("sun_needed"), r.get("actual_sun")) is not None, axis=1)]
+            if mismatch_df.empty:
+                st.success("✅ All plants are correctly placed!")
+            else:
+                st.caption(f"**{len(mismatch_df)} plants** with placement issues")
+                for _, row in mismatch_df.iterrows():
+                    mtype  = sun_mismatch(row.get("sun_needed"), row.get("actual_sun"))
+                    needed = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"?")
+                    actual = SUN_OPTIONS.get(str(row.get("actual_sun") or ""),"?")
+                    with st.expander(f"⚠️ **{row['name']}** — needs {needed}, gets {actual}"):
+                        st.markdown(f"""<div class="care-card" style="background:#fdecea;border:1.5px solid #c0392b">
+                          <div class="care-title" style="color:#c0392b">⚠️ Placement problem</div>
+                          <div class="care-body">{"Too much sun — may scorch or dry out." if mtype=='over' else "Too little sun — likely poor flowering and weak growth."}</div>
+                        </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4 — SUN SETUP
