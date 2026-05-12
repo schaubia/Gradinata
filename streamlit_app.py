@@ -509,7 +509,6 @@ tab_plan, tab_dash, tab_care, tab_sun, tab_grid, tab_climate, tab_template = st.
 ])
 
 wx = st.session_state.wx or {"ok": False}
-df = st.session_state.plants_df
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 — PLANNING
