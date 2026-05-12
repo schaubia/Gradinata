@@ -797,45 +797,45 @@ with tab_sun:
     st.caption("Tell the app how much sun each plant actually gets in its current spot.")
     if require_plants():
         bc1, bc2, bc3, bc4, bc5 = st.columns([2.5,1.2,1.5,1.3,1])
-    bulk_q = bc1.text_input("Filter (empty = all)", placeholder="e.g. rose…", label_visibility="collapsed")
-    mask   = (st.session_state.plants_df["name"].str.contains(bulk_q, case=False, na=False)
-              if bulk_q else pd.Series([True]*len(st.session_state.plants_df)))
-    if bc2.button("☀️ Full sun"):    st.session_state.plants_df.loc[mask,"actual_sun"]="full_sun";    st.rerun()
-    if bc3.button("⛅ Part. shade"): st.session_state.plants_df.loc[mask,"actual_sun"]="partial_shade"; st.rerun()
-    if bc4.button("🌑 Full shade"):  st.session_state.plants_df.loc[mask,"actual_sun"]="full_shade";  st.rerun()
-    if bc5.button("✕ Clear"):        st.session_state.plants_df.loc[mask,"actual_sun"]=None;          st.rerun()
+        bulk_q = bc1.text_input("Filter (empty = all)", placeholder="e.g. rose…", label_visibility="collapsed")
+        mask   = (st.session_state.plants_df["name"].str.contains(bulk_q, case=False, na=False)
+                  if bulk_q else pd.Series([True]*len(st.session_state.plants_df)))
+        if bc2.button("☀️ Full sun"):    st.session_state.plants_df.loc[mask,"actual_sun"]="full_sun";    st.rerun()
+        if bc3.button("⛅ Part. shade"): st.session_state.plants_df.loc[mask,"actual_sun"]="partial_shade"; st.rerun()
+        if bc4.button("🌑 Full shade"):  st.session_state.plants_df.loc[mask,"actual_sun"]="full_shade";  st.rerun()
+        if bc5.button("✕ Clear"):        st.session_state.plants_df.loc[mask,"actual_sun"]=None;          st.rerun()
 
-    st.divider()
-    show_f = st.radio("Show", ["All plants","⚠️ Mismatches only","○ Not set yet"], horizontal=True)
+        st.divider()
+        show_f = st.radio("Show", ["All plants","⚠️ Mismatches only","○ Not set yet"], horizontal=True)
 
-    for i, row in st.session_state.plants_df.iterrows():
-        actual = row.get("actual_sun") or ""
-        needed = row.get("sun_needed") or ""
-        mtype  = sun_mismatch(needed, actual)
-        if show_f == "⚠️ Mismatches only" and not mtype: continue
-        if show_f == "○ Not set yet" and actual: continue
+        for i, row in st.session_state.plants_df.iterrows():
+            actual = row.get("actual_sun") or ""
+            needed = row.get("sun_needed") or ""
+            mtype  = sun_mismatch(needed, actual)
+            if show_f == "⚠️ Mismatches only" and not mtype: continue
+            if show_f == "○ Not set yet" and actual: continue
 
-        status = "○" if not actual else ("⚠️" if mtype else "✅")
-        color  = "#aaa" if not actual else ("#c0392b" if mtype else "#2c7a1e")
-        actual_html = (f"<span style='color:{'#c0392b' if mtype else '#2c7a1e'};font-weight:600'>{SUN_OPTIONS.get(actual,'')}</span>"
-                       if actual else "<span style='color:#bbb;font-size:0.82rem'>— not set —</span>")
+            status = "○" if not actual else ("⚠️" if mtype else "✅")
+            color  = "#aaa" if not actual else ("#c0392b" if mtype else "#2c7a1e")
+            actual_html = (f"<span style='color:{'#c0392b' if mtype else '#2c7a1e'};font-weight:600'>{SUN_OPTIONS.get(actual,'')}</span>"
+                           if actual else "<span style='color:#bbb;font-size:0.82rem'>— not set —</span>")
 
-        cn, cneeded, cactual, cb1, cb2, cb3 = st.columns([3,2,2,1.2,1.5,1.3])
-        cn.markdown(
-            f"<span style='color:{color};font-weight:600'>{status} {row['name']}</span>"
-            f"<br><span style='font-size:0.75rem;color:#888'>{row.get('latin','')}</span>",
-            unsafe_allow_html=True)
-        cneeded.markdown(f"<span style='font-size:0.82rem;color:#555'>{SUN_OPTIONS.get(needed, needed or '—')}</span>",
-                         unsafe_allow_html=True)
-        cactual.markdown(actual_html, unsafe_allow_html=True)
+            cn, cneeded, cactual, cb1, cb2, cb3 = st.columns([3,2,2,1.2,1.5,1.3])
+            cn.markdown(
+                f"<span style='color:{color};font-weight:600'>{status} {row['name']}</span>"
+                f"<br><span style='font-size:0.75rem;color:#888'>{row.get('latin','')}</span>",
+                unsafe_allow_html=True)
+            cneeded.markdown(f"<span style='font-size:0.82rem;color:#555'>{SUN_OPTIONS.get(needed, needed or '—')}</span>",
+                             unsafe_allow_html=True)
+            cactual.markdown(actual_html, unsafe_allow_html=True)
 
-        t = lambda v: "primary" if actual == v else "secondary"
-        if cb1.button("☀️", key=f"fs_{i}",  type=t("full_sun")):
-            st.session_state.plants_df.at[i,"actual_sun"] = None if actual=="full_sun" else "full_sun"; st.rerun()
-        if cb2.button("⛅", key=f"ps_{i}",  type=t("partial_shade")):
-            st.session_state.plants_df.at[i,"actual_sun"] = None if actual=="partial_shade" else "partial_shade"; st.rerun()
-        if cb3.button("🌑", key=f"fsh_{i}", type=t("full_shade")):
-            st.session_state.plants_df.at[i,"actual_sun"] = None if actual=="full_shade" else "full_shade"; st.rerun()
+            t = lambda v: "primary" if actual == v else "secondary"
+            if cb1.button("☀️", key=f"fs_{i}",  type=t("full_sun")):
+                st.session_state.plants_df.at[i,"actual_sun"] = None if actual=="full_sun" else "full_sun"; st.rerun()
+            if cb2.button("⛅", key=f"ps_{i}",  type=t("partial_shade")):
+                st.session_state.plants_df.at[i,"actual_sun"] = None if actual=="partial_shade" else "partial_shade"; st.rerun()
+            if cb3.button("🌑", key=f"fsh_{i}", type=t("full_shade")):
+                st.session_state.plants_df.at[i,"actual_sun"] = None if actual=="full_shade" else "full_shade"; st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 5 — GARDEN GRID
