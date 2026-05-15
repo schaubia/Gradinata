@@ -556,14 +556,29 @@ with tab_plan:
         st.session_state.garden_name = garden_name
         with st.spinner("🌍 Analysing climate and soil data…"):
             try:
-                planner = GardenPlanner(Config())
-                results = planner.generate_recommendations(
-                    latitude=latitude, longitude=longitude,
-                    num_recommendations=num_rec, min_suitability_score=min_score,
+                # Locate the PFAF CSV — try common filenames
+                import glob
+                csv_candidates = glob.glob("*.csv") + glob.glob("data/*.csv") + glob.glob("data/raw/*.csv")
+                pfaf_csv = next(
+                    (f for f in csv_candidates
+                     if any(k in f.lower() for k in ["pfaf","plant","database","flora"])),
+                    csv_candidates[0] if csv_candidates else None
                 )
-                st.session_state.planner_results = results
-                df_plan = results.get("recommendations")
+                if pfaf_csv is None:
+                    st.error("❌ No plant CSV found. Add your PFAF CSV file to the repository.")
+                    st.stop()
+
+                planner = GardenPlanner()
+                planner.initialize(pfaf_csv)
+                location_id = planner.add_location(latitude, longitude, garden_name)
+                df_plan = planner.get_recommendations(
+                    location_id, top_n=num_rec, min_score=min_score
+                )
+
                 if df_plan is not None and not df_plan.empty:
+                    # Rename score column for consistency
+                    if "suitability_score" in df_plan.columns:
+                        df_plan = df_plan.rename(columns={"suitability_score": "score"})
                     try:
                         clustering = PlantClusteringModule(max_cluster_size=max_cluster)
                         df_plan = clustering.cluster_plants(df_plan)
@@ -576,11 +591,18 @@ with tab_plan:
                         st.session_state.plants_df = care_df
                         st.session_state.plants_from_plan = True
                     try:
-                        proj = get_climate_projection_for_location(latitude, longitude)
-                        st.session_state.climate_projection = proj
+                        from climate_projection import get_climate_projection_for_location as _get_proj
+                        proj, summary = _get_proj(latitude, longitude,
+                                                  current_avg_temp=12.0,
+                                                  current_precip=600,
+                                                  current_frost_days=30,
+                                                  location_name=garden_name)
+                        st.session_state.climate_projection = {"projection": proj, "summary": summary}
                     except Exception:
                         st.session_state.climate_projection = None
                     st.success(f"✅ {len(df_plan)} plants generated and loaded into **Care Schedule**!")
+                else:
+                    st.warning("No plants found matching the criteria. Try lowering the minimum suitability score.")
             except Exception as e:
                 st.error(f"❌ Error: {e}")
 

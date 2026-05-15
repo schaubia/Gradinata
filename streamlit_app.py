@@ -498,8 +498,9 @@ with st.sidebar:
     today = st.date_input("📅 Date", value=date.today())
 
 # ── Main tabs ─────────────────────────────────────────────────────────────────
-tab_plan, tab_dash, tab_care, tab_sun, tab_grid, tab_climate, tab_template = st.tabs([
+tab_plan, tab_compare, tab_dash, tab_care, tab_sun, tab_grid, tab_climate, tab_template = st.tabs([
     "🗺️ Planning",
+    "🔍 Compare",
     "🌤️ Dashboard",
     "📋 Care Schedule",
     "☀️ Sun Setup",
@@ -673,6 +674,174 @@ with tab_plan:
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 2 — COMPARE (recommended vs. existing garden)
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_compare:
+    st.markdown("# 🔍 Compare Recommendations vs. Your Garden")
+    st.caption("See which recommended plants you already grow, which are missing, and which of yours weren't recommended.")
+
+    has_plan    = st.session_state.planner_df is not None
+    has_garden  = st.session_state.plants_df is not None and not st.session_state.plants_from_plan
+
+    if not has_plan and not has_garden:
+        st.info("To use this tab, generate a plan from **🗺️ Planning** and upload your existing plants via the sidebar.")
+    elif not has_plan:
+        st.info("Generate a plan from the **🗺️ Planning** tab to compare against your garden.")
+    elif not has_garden:
+        st.info("Upload your existing plant list via the sidebar to compare against the recommendations.")
+    else:
+        rec_df    = st.session_state.planner_df.copy()
+        garden_df = st.session_state.plants_df.copy()
+
+        # Normalise names for fuzzy matching (lowercase, strip)
+        def norm(s):
+            return str(s).lower().strip() if s else ""
+
+        # Build sets of normalised latin and common names from each source
+        rec_name_col   = next((c for c in rec_df.columns if "name" in c.lower() and "latin" not in c.lower()), rec_df.columns[0])
+        rec_latin_col  = next((c for c in rec_df.columns if "latin" in c.lower() or "species" in c.lower()), None)
+        score_col      = next((c for c in rec_df.columns if "score" in c.lower()), None)
+
+        rec_commons = {norm(r.get(rec_name_col,"")) for _, r in rec_df.iterrows()}
+        rec_latins  = {norm(r.get(rec_latin_col,"")) for _, r in rec_df.iterrows()} if rec_latin_col else set()
+
+        def is_match(garden_row):
+            """True if garden plant appears in recommendations (by common or latin name)."""
+            gn = norm(garden_row.get("name",""))
+            gl = norm(garden_row.get("latin",""))
+            # Exact match
+            if gn in rec_commons or (gl and gl in rec_latins):
+                return True
+            # Genus-level match (first word of latin)
+            if gl:
+                genus = gl.split()[0]
+                if any(genus in rl for rl in rec_latins if rl):
+                    return True
+            return False
+
+        def rec_score(garden_row):
+            """Return score of the matched recommendation, or None."""
+            if not has_plan or rec_df is None: return None
+            gn = norm(garden_row.get("name",""))
+            gl = norm(garden_row.get("latin",""))
+            for _, rr in rec_df.iterrows():
+                rn = norm(rr.get(rec_name_col,""))
+                rl = norm(rr.get(rec_latin_col,"")) if rec_latin_col else ""
+                if gn == rn or (gl and gl == rl):
+                    return rr.get(score_col) if score_col else None
+            return None
+
+        garden_df["_matched"]  = garden_df.apply(is_match, axis=1)
+        garden_df["_rec_score"] = garden_df.apply(rec_score, axis=1)
+
+        matched    = garden_df[garden_df["_matched"]]
+        not_in_rec = garden_df[~garden_df["_matched"]]
+
+        # Recommendations not already in garden
+        garden_commons = {norm(r) for r in garden_df["name"]}
+        garden_latins  = {norm(r) for r in garden_df.get("latin", [])} if "latin" in garden_df.columns else set()
+
+        def already_have(rec_row):
+            rn = norm(rec_row.get(rec_name_col,""))
+            rl = norm(rec_row.get(rec_latin_col,"")) if rec_latin_col else ""
+            if rn in garden_commons or (rl and rl in garden_latins): return True
+            if rl:
+                genus = rl.split()[0]
+                if any(genus in gl for gl in garden_latins if gl): return True
+            return False
+
+        missing_df = rec_df[~rec_df.apply(already_have, axis=1)]
+
+        # ── Summary metrics ─────────────────────────────────────────────────
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🌱 Your plants", len(garden_df))
+        c2.metric("✅ Already recommended", len(matched),
+                  help="Plants you grow that also appear in the AI recommendations")
+        c3.metric("❓ Not recommended", len(not_in_rec),
+                  help="Plants you grow that didn't make the recommendation list")
+        c4.metric("➕ Suggested additions", len(missing_df),
+                  help="Top recommended plants you don't currently grow")
+
+        pct = int(100 * len(matched) / len(garden_df)) if len(garden_df) else 0
+        st.progress(pct / 100,
+            text=f"**{pct}%** of your garden matches the AI recommendations for your location")
+
+        st.divider()
+
+        col_l, col_r = st.columns(2)
+
+        # ── Left: already have ───────────────────────────────────────────────
+        with col_l:
+            st.markdown(f'''<div class="sec-hdr">✅ Plants you already have ({len(matched)})</div>''',
+                        unsafe_allow_html=True)
+            if matched.empty:
+                st.info("None of your current plants appear in the recommendations.")
+            else:
+                for _, row in matched.sort_values("_rec_score", ascending=False).iterrows():
+                    score = row.get("_rec_score")
+                    score_badge = (f" · <span style='color:#2E7D32;font-weight:600'>{score:.2f} ⭐</span>"
+                                   if score else "")
+                    sun = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"")
+                    st.markdown(
+                        f'''<div style="background:#f0f7e8;border-left:3px solid #3d6b1e;
+                        border-radius:8px;padding:9px 14px;margin-bottom:6px">
+                        <span style="font-weight:600;color:#1a3a0e">{row["name"]}</span>
+                        {score_badge}
+                        <span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>
+                        </div>''', unsafe_allow_html=True)
+
+        # ── Right: top missing ───────────────────────────────────────────────
+        with col_r:
+            top_n_missing = st.slider("Top suggestions to show", 5, 50, 15, 5)
+            st.markdown(f'''<div class="sec-hdr">➕ Top plants to add ({min(top_n_missing, len(missing_df))} of {len(missing_df)})</div>''',
+                        unsafe_allow_html=True)
+            if missing_df.empty:
+                st.success("🎉 You already grow all the top recommended plants!")
+            else:
+                show_missing = missing_df.head(top_n_missing)
+                for _, row in show_missing.iterrows():
+                    name  = row.get(rec_name_col,"")
+                    latin = row.get(rec_latin_col,"") if rec_latin_col else ""
+                    score = row.get(score_col) if score_col else None
+                    shade = FIELD_EXPLANATIONS["Shade"].get(str(row.get("shade","")).strip(),"")
+                    score_badge = (f"<span style='float:right;color:#2E7D32;font-weight:600'>{score:.2f}</span>"
+                                   if score else "")
+                    st.markdown(
+                        f'''<div style="background:#e8f1fb;border-left:3px solid #1a5a8a;
+                        border-radius:8px;padding:9px 14px;margin-bottom:6px">
+                        {score_badge}
+                        <span style="font-weight:600;color:#0d2d4e">{name}</span>
+                        <span style="font-size:0.75rem;color:#888;margin-left:6px;font-style:italic">{latin}</span>
+                        {"<br><span style='font-size:0.75rem;color:#555'>🌤️ " + shade + "</span>" if shade else ""}
+                        </div>''', unsafe_allow_html=True)
+
+        # ── Bottom: plants not in recommendations ────────────────────────────
+        if len(not_in_rec) > 0:
+            st.divider()
+            with st.expander(f"❓ Your {len(not_in_rec)} plants not in the recommendations"):
+                st.caption("These plants may still be perfectly fine — they just didn't rank in the top recommendations for your specific location and climate.")
+                for _, row in not_in_rec.iterrows():
+                    sun = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"")
+                    st.markdown(
+                        f'''<div style="background:#f5f5f5;border-left:3px solid #aaa;
+                        border-radius:8px;padding:8px 14px;margin-bottom:5px">
+                        <span style="font-weight:500;color:#444">{row["name"]}</span>
+                        <span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>
+                        </div>''', unsafe_allow_html=True)
+
+        # ── Download comparison ──────────────────────────────────────────────
+        st.divider()
+        export_df = garden_df[["name","latin","sun_needed","_matched","_rec_score"]].copy()
+        export_df.columns = ["Name","Latin","Sun needed","In recommendations","Recommendation score"]
+        st.download_button(
+            "📥 Download comparison as CSV",
+            export_df.to_csv(index=False).encode(),
+            file_name="gradinata_comparison.csv",
+            mime="text/csv",
+        )
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — DASHBOARD
