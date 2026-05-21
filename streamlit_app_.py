@@ -371,105 +371,6 @@ def parse_upload(f):
         return None, str(e)
 
 
-
-
-# ── Bulgarian → English plant name dictionary ─────────────────────────────────
-BG_TO_EN = {
-    # Trees
-    "дъб": "oak", "бук": "beech", "бор": "pine", "смърч": "spruce",
-    "ела": "fir", "липа": "linden", "бреза": "birch", "топола": "poplar",
-    "върба": "willow", "акация": "acacia", "кестен": "chestnut",
-    "орех": "walnut", "череша": "cherry", "вишня": "sour cherry",
-    "ябълка": "apple", "круша": "pear", "слива": "plum", "праскова": "peach",
-    "кайсия": "apricot", "дюля": "quince", "мушмула": "medlar",
-    "гинко": "ginkgo", "магнолия": "magnolia", "глог": "hawthorn",
-    "трепетлика": "aspen", "явор": "sycamore maple", "клен": "maple",
-    "ясен": "ash", "габър": "hornbeam", "елша": "alder",
-    # Shrubs
-    "люляк": "lilac", "розмарин": "rosemary", "лавандула": "lavender",
-    "хортензия": "hydrangea", "форзиция": "forsythia", "дафина": "laurustinus",
-    "боровинка": "blueberry", "малина": "raspberry", "касис": "blackcurrant",
-    "цариградско грозде": "gooseberry", "шипка": "rose hip / dog rose",
-    "леска": "hazel", "дрян": "cornelian cherry", "калина": "viburnum",
-    "бъз": "elderberry", "трендафил": "rose", "роза": "rose",
-    "жасмин": "jasmine", "клематис": "clematis", "глициния": "wisteria",
-    "хибискус": "hibiscus", "рододендрон": "rhododendron", "азалия": "azalea",
-    "буркан": "forsythia", "дрянка": "dogwood", "пираканта": "firethorn",
-    "котонеастер": "cotoneaster", "берберис": "barberry", "вайгела": "weigela",
-    "спирея": "spiraea", "декзия": "deutzia",
-    # Perennials & bulbs
-    "далия": "dahlia", "ирис": "iris", "лале": "tulip", "нарцис": "daffodil",
-    "зюмбюл": "hyacinth", "крем": "lily", "гладиол": "gladiolus",
-    "лилия": "lily", "божур": "peony", "хоста": "hosta",
-    "ехинацея": "echinacea", "рудбекия": "rudbeckia", "салвия": "salvia",
-    "градински чай": "sage", "жалфия": "sage", "мента": "mint",
-    "маточина": "lemon balm", "мащерка": "thyme", "риган": "oregano",
-    "босилек": "basil", "копър": "dill", "магданоз": "parsley",
-    "рукола": "arugula", "спанак": "spinach", "марула": "lettuce",
-    "астра": "aster", "хризантема": "chrysanthemum", "невен": "marigold",
-    "теменуга": "violet / pansy", "иглика": "primrose", "лютиче": "buttercup",
-    "здравец": "geranium", "пеларгония": "pelargonium", "бегония": "begonia",
-    "петуния": "petunia", "импатиенс": "impatiens", "фуксия": "fuchsia",
-    "клематис": "clematis", "пасифлора": "passionflower",
-    "аквилегия": "columbine", "делфиниум": "delphinium", "луличка": "lupin",
-    "маргаритка": "daisy", "камбанка": "bellflower / campanula",
-    # Climbers & ground cover
-    "бръшлян": "ivy", "дива лоза": "virginia creeper", "хмел": "hop",
-    "лоза": "grapevine", "жимолост": "honeysuckle", "тромпетно цвете": "trumpet vine",
-    # Vegetables
-    "домат": "tomato", "чушка": "pepper", "патладжан": "aubergine",
-    "краставица": "cucumber", "тиква": "pumpkin / squash",
-    "морков": "carrot", "репичка": "radish", "цвекло": "beetroot",
-    "лук": "onion", "чесън": "garlic", "праз": "leek",
-    "зеле": "cabbage", "карфиол": "cauliflower", "броколи": "broccoli",
-    "грах": "pea", "боб": "bean", "царевица": "corn",
-    # Common extras
-    "слънчоглед": "sunflower", "рапица": "rapeseed", "лен": "flax",
-    "памук": "cotton", "тютюн": "tobacco",
-}
-
-def has_cyrillic(text: str) -> bool:
-    """Returns True if string contains Cyrillic characters."""
-    return any("\u0400" <= ch <= "\u04FF" for ch in str(text))
-
-
-def translate_name(name: str) -> str:
-    """
-    Translates a Bulgarian plant name to English using the built-in dictionary.
-    Falls back to the Latin name (if available) or the original name.
-    Matching is case-insensitive and strips whitespace.
-    """
-    if not has_cyrillic(name):
-        return name
-    key = name.strip().lower()
-    # Exact match
-    if key in BG_TO_EN:
-        return BG_TO_EN[key]
-    # Partial match — name contains a known Bulgarian word
-    for bg, en in BG_TO_EN.items():
-        if bg in key:
-            return en
-    return name  # no match found — keep original for display, Latin will handle matching
-
-
-def add_english_names(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Adds a 'name_en' column with English translations.
-    If Latin name exists, uses that as primary matching key.
-    Falls back to dictionary translation, then original name.
-    """
-    def best_english(row):
-        # Latin name is the most reliable matching key
-        latin = str(row.get("latin") or "")
-        if latin and latin.lower() not in ("nan","none",""):
-            # Extract genus as English proxy (works well for PFAF matching)
-            return latin.split()[0]
-        name = str(row.get("name",""))
-        return translate_name(name)
-
-    df["name_en"] = df.apply(best_english, axis=1)
-    return df
-
 # ── garden_plan helpers ───────────────────────────────────────────────────────
 def cluster_color(cluster_id):
     return CLUSTER_COLORS[int(cluster_id) % len(CLUSTER_COLORS)]
@@ -512,7 +413,6 @@ def add_legend_to_image(image_path):
 for k, v in [
     ("plants_df",          None),
     ("plants_from_plan",   False),
-    ("garden_df",          None),   # always from manual CSV upload, never overwritten by Planning
     ("wx",                 None),
     ("location",           {"name":"Sofia","country":"Bulgaria","region":"Sofia-Capital",
                             "lat":42.698,"lon":23.322,"timezone":"Europe/Sofia","elevation":550}),
@@ -540,35 +440,16 @@ with st.sidebar:
     st.caption(f"📍 {loc['name']}, {loc['country']}")
     st.divider()
 
-    # ── Section 1: Generated plan ─────────────────────────────────────────────
-    st.markdown("**🗺️ Generated plan**")
-    if st.session_state.plants_from_plan and st.session_state.plants_df is not None:
-        plan_count = len(st.session_state.plants_df)
-        st.success(f"✅ {plan_count} plants generated")
-        if st.button("✕ Clear plan", use_container_width=True, key="clear_plan"):
+    plant_count = len(st.session_state.plants_df) if st.session_state.plants_df is not None else 0
+    if plant_count:
+        source_label = "from Planning" if st.session_state.plants_from_plan else "from CSV"
+        st.success(f"✅ {plant_count} plants loaded ({source_label})")
+        if st.button("↩️ Clear plant list", use_container_width=True):
             st.session_state.plants_df = None
             st.session_state.plants_from_plan = False
-            st.session_state.planner_df = None
-            st.session_state.planner_results = None
-            st.session_state.climate_projection = None
             st.rerun()
     else:
-        st.caption("Generate from the **🗺️ Planning** tab")
-
-    st.divider()
-
-    # ── Section 2: Your existing garden (CSV upload) ───────────────────────────
-    st.markdown("**📂 Your existing garden**")
-    garden_count = len(st.session_state.garden_df) if st.session_state.garden_df is not None else 0
-    if garden_count:
-        st.success(f"✅ {garden_count} plants uploaded")
-        if st.button("✕ Clear upload", use_container_width=True, key="clear_upload"):
-            st.session_state.garden_df = None
-            # If no generated plan, also clear plants_df
-            if not st.session_state.plants_from_plan:
-                st.session_state.plants_df = None
-            st.rerun()
-    else:
+        st.markdown("**📂 Load your plants:**")
         sb_file = st.file_uploader("CSV or XLSX", type=["csv","xlsx","xls"],
                                    key="sidebar_uploader", label_visibility="collapsed")
         if sb_file:
@@ -576,14 +457,10 @@ with st.sidebar:
             if err:
                 st.error(f"❌ {err}")
             else:
-                parsed = add_english_names(parsed)
-                st.session_state.garden_df = parsed
-                # Use as care source only if no generated plan
-                if not st.session_state.plants_from_plan:
-                    st.session_state.plants_df = parsed
+                st.session_state.plants_df = parsed
+                st.session_state.plants_from_plan = False
                 st.rerun()
-        st.caption("Used for **🔍 Compare** and care schedule (if no plan)")
-
+        st.caption("or generate from the **🗺️ Planning** tab")
     st.divider()
 
     with st.expander("📍 Change location"):
@@ -671,7 +548,7 @@ with tab_plan:
     col_gen, col_reset = st.columns(2)
     generate = col_gen.button("🌿 Generate", type="primary", use_container_width=True)
     if col_reset.button("🔄 Reset", use_container_width=True):
-        for k in ["planner_results","planner_df","climate_projection","plants_df","garden_df"]:
+        for k in ["planner_results","planner_df","climate_projection","plants_df"]:
             st.session_state[k] = None
         st.session_state.plants_from_plan = False
         st.rerun()
@@ -807,31 +684,17 @@ with tab_compare:
     st.caption("See which recommended plants you already grow, which are missing, and which of yours weren't recommended.")
 
     has_plan    = st.session_state.planner_df is not None
-    has_garden  = st.session_state.garden_df is not None
+    has_garden  = st.session_state.plants_df is not None and not st.session_state.plants_from_plan
 
-    # ── Status bar — always visible, shows what is loaded and what is missing ──
-    col_s1, col_s2 = st.columns(2)
-    with col_s1:
-        if has_plan:
-            n = len(st.session_state.planner_df)
-            st.success(f"✅ **Generated plan** — {n} plants")
-        else:
-            st.warning("⬜ **Generated plan** — not yet generated. Go to the 🗺️ Planning tab and click Generate.")
-    with col_s2:
-        if has_garden:
-            n = len(st.session_state.garden_df)
-            st.success(f"✅ **Your garden** — {n} plants uploaded")
-        else:
-            st.warning("⬜ **Your garden** — not yet uploaded. Use the sidebar to upload a CSV or XLSX.")
-
-    if not has_plan or not has_garden:
-        st.info("Both sources are needed for a full comparison. "
-                "You can do them in any order.")
-        st.stop()
-
-    if has_plan and has_garden:
+    if not has_plan and not has_garden:
+        st.info("To use this tab, generate a plan from **🗺️ Planning** and upload your existing plants via the sidebar.")
+    elif not has_plan:
+        st.info("Generate a plan from the **🗺️ Planning** tab to compare against your garden.")
+    elif not has_garden:
+        st.info("Upload your existing plant list via the sidebar to compare against the recommendations.")
+    else:
         rec_df    = st.session_state.planner_df.copy()
-        garden_df = st.session_state.garden_df.copy()
+        garden_df = st.session_state.plants_df.copy()
 
         # Normalise names for fuzzy matching (lowercase, strip)
         def norm(s):
@@ -844,6 +707,20 @@ with tab_compare:
 
         rec_commons = {norm(r.get(rec_name_col,"")) for _, r in rec_df.iterrows()}
         rec_latins  = {norm(r.get(rec_latin_col,"")) for _, r in rec_df.iterrows()} if rec_latin_col else set()
+
+        def is_match(garden_row):
+            """True if garden plant appears in recommendations (by common or latin name)."""
+            gn = norm(garden_row.get("name",""))
+            gl = norm(garden_row.get("latin",""))
+            # Exact match
+            if gn in rec_commons or (gl and gl in rec_latins):
+                return True
+            # Genus-level match (first word of latin)
+            if gl:
+                genus = gl.split()[0]
+                if any(genus in rl for rl in rec_latins if rl):
+                    return True
+            return False
 
         def rec_score(garden_row):
             """Return score of the matched recommendation, or None."""
@@ -864,9 +741,7 @@ with tab_compare:
         not_in_rec = garden_df[~garden_df["_matched"]]
 
         # Recommendations not already in garden
-        # Use English names for matching if available
-        name_col_g     = "name_en" if "name_en" in garden_df.columns else "name"
-        garden_commons = {norm(r) for r in garden_df[name_col_g]}
+        garden_commons = {norm(r) for r in garden_df["name"]}
         garden_latins  = {norm(r) for r in garden_df.get("latin", [])} if "latin" in garden_df.columns else set()
 
         def already_have(rec_row):
@@ -876,18 +751,6 @@ with tab_compare:
             if rl:
                 genus = rl.split()[0]
                 if any(genus in gl for gl in garden_latins if gl): return True
-            return False
-
-        def is_match(garden_row):
-            """True if garden plant appears in recommendations (by English name, Latin name, or genus)."""
-            gn = norm(garden_row.get("name_en", garden_row.get("name","")))
-            gl = norm(garden_row.get("latin",""))
-            if gn in rec_commons or (gl and gl in rec_latins):
-                return True
-            if gl:
-                genus = gl.split()[0]
-                if any(genus in rl for rl in rec_latins if rl):
-                    return True
             return False
 
         missing_df = rec_df[~rec_df.apply(already_have, axis=1)]
@@ -922,16 +785,11 @@ with tab_compare:
                     score_badge = (f" · <span style='color:#2E7D32;font-weight:600'>{score:.2f} ⭐</span>"
                                    if score else "")
                     sun = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"")
-                    name_disp = row["name"]
-                    name_en   = row.get("name_en","")
-                    trans_note = (f"<span style='font-size:0.72rem;color:#5a8a4a;margin-left:6px'>"
-                                  f"→ {name_en}</span>"
-                                  if name_en and name_en != name_disp else "")
                     st.markdown(
                         f'''<div style="background:#f0f7e8;border-left:3px solid #3d6b1e;
                         border-radius:8px;padding:9px 14px;margin-bottom:6px">
-                        <span style="font-weight:600;color:#1a3a0e">{name_disp}</span>
-                        {trans_note}{score_badge}
+                        <span style="font-weight:600;color:#1a3a0e">{row["name"]}</span>
+                        {score_badge}
                         <span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>
                         </div>''', unsafe_allow_html=True)
 
@@ -967,15 +825,10 @@ with tab_compare:
                 st.caption("These plants may still be perfectly fine — they just didn't rank in the top recommendations for your specific location and climate.")
                 for _, row in not_in_rec.iterrows():
                     sun = SUN_OPTIONS.get(str(row.get("sun_needed") or ""),"")
-                    name_disp2 = row["name"]
-                    name_en2   = row.get("name_en","")
-                    trans2 = (f"<span style='font-size:0.72rem;color:#888;margin-left:6px'>→ {name_en2}</span>"
-                              if name_en2 and name_en2 != name_disp2 else "")
                     st.markdown(
                         f'''<div style="background:#f5f5f5;border-left:3px solid #aaa;
                         border-radius:8px;padding:8px 14px;margin-bottom:5px">
-                        <span style="font-weight:500;color:#444">{name_disp2}</span>
-                        {trans2}
+                        <span style="font-weight:500;color:#444">{row["name"]}</span>
                         <span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>
                         </div>''', unsafe_allow_html=True)
 
