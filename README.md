@@ -3,8 +3,6 @@
 **Smart Garden Assistant**
 Plan new plants, manage care for existing ones, and track climate projections — all in one place.
 
-Built by **Dantara Software EOOD**
-
 ---
 
 ## What the app does
@@ -12,23 +10,26 @@ Built by **Dantara Software EOOD**
 Gradinata consolidates two standalone projects into one product:
 
 - **Planning** — enter your garden's GPS coordinates and receive personalised plant recommendations based on real climate data, soil conditions, and climate projections
+- **Compare** — see which recommended plants you already grow, which top picks you're missing, and which of your existing plants didn't make the list
 - **Care** — load your plant list and get a concrete schedule: when to prune, feed, and water, with automatic weather alerts for frost, drought, and high UV
 
-The key connection between the two: once you generate a plan, the plants are automatically loaded into the care schedule — no manual entry required.
+The key connection between the modules: once you generate a plan, the plants are automatically loaded into the care schedule — no manual entry required. Upload your existing plant list separately to unlock the Compare tab.
 
 ---
 
 ## File structure
 
 ```
-gradinata_app.py          ← main file (run this)
+streamlit_app.py          ← main file (run this / deployed on Streamlit Cloud)
 garden_planner_core.py    ← recommendation and clustering logic
 climate_projection.py     ← IPCC-based climate projections
+pfaf_plants.csv           ← PFAF plant database (required for Planning tab)
+requirements.txt          ← Python dependencies
 gradinata_template.csv    ← template for manually entering plants
 README.md                 ← this file
 ```
 
-> **Important:** `garden_planner_core.py` and `climate_projection.py` must be in the same folder as `gradinata_app.py`. Without them the 🗺️ Planning, 📐 Garden Grid, and 🌍 Climate tabs will not work, but all other tabs (Dashboard, Care Schedule, Sun Setup, Template) are fully functional on their own.
+> **Important:** `garden_planner_core.py`, `climate_projection.py`, and the PFAF CSV must all be in the same folder as `streamlit_app.py`. Without them the 🗺️ Planning, 🔍 Compare, 📐 Garden Grid, and 🌍 Climate tabs will not work, but all other tabs (Dashboard, Care Schedule, Sun Setup, Template) are fully functional on their own.
 
 ---
 
@@ -49,7 +50,7 @@ cd gradinata
 pip install streamlit pandas pillow openpyxl
 
 # 3. Run
-streamlit run gradinata_app.py
+streamlit run streamlit_app.py
 ```
 
 The app opens automatically at `http://localhost:8501`
@@ -58,7 +59,7 @@ The app opens automatically at `http://localhost:8501`
 
 1. Push all files to a GitHub repository
 2. Log in at [share.streamlit.io](https://share.streamlit.io)
-3. Connect the repo → select `gradinata_app.py` → Deploy
+3. Connect the repo → select `streamlit_app.py` → Deploy
 
 ---
 
@@ -69,6 +70,16 @@ Enter coordinates (latitude/longitude) and preferences, click **Generate**, and 
 - A ranked list of recommended plants based on real suitability scores
 - Companion planting clusters (which plants grow well together)
 - Automatic loading of all plants into the Care Schedule tab
+
+### 🔍 Compare
+Compare the AI recommendations against your existing plant list (uploaded via the sidebar):
+- **Summary metrics** — how many of your plants are recommended, how many top picks you're missing, and what percentage of your garden matches the recommendations
+- **Already have** — your plants that appear in the recommendations, sorted by suitability score
+- **Top plants to add** — highest-scoring recommendations you don't currently grow
+- **Not recommended** — your plants that didn't rank for your location (may still be perfectly fine)
+- **Download** — export the full comparison as CSV
+
+> To use Compare, generate a plan from Planning **and** upload your existing plants separately via the sidebar. Plants loaded automatically from Planning won't be used as the "existing garden" for comparison.
 
 ### 🌤️ Dashboard
 - Live weather for your location (Open-Meteo API)
@@ -96,7 +107,7 @@ A CSV template for manually entering your plant list. Download, fill in, upload 
 
 ---
 
-## Loading your plants
+## Loading plants
 
 **Option A — from Planning (recommended)**
 1. Open the 🗺️ Planning tab
@@ -108,6 +119,8 @@ A CSV template for manually entering your plant list. Download, fill in, upload 
 1. Download the template from the ⬇️ Template tab
 2. Fill in the `name` and `sun_needed` columns (required)
 3. Upload the file via the sidebar
+
+> **For the Compare tab:** generate a plan first (Option A), then *also* upload your existing plants via the sidebar (Option B). The comparison works by having both sources loaded at the same time.
 
 ### CSV format reference
 
@@ -141,7 +154,7 @@ An internet connection is required only for live weather and geocoding. Everythi
 
 ## Adding plants to the care database
 
-The care database lives in the `CARE_DB` dictionary in `gradinata_app.py`. To add a new genus:
+The care database lives in the `CARE_DB` dictionary in `streamlit_app.py`. To add a new genus:
 
 ```python
 "Ficus": {
@@ -154,7 +167,7 @@ The care database lives in the `CARE_DB` dictionary in `gradinata_app.py`. To ad
 },
 ```
 
-The key is the Latin genus name (first word of the Latin plant name only).
+The key is the Latin genus name (first word of the Latin plant name only). BG names present if in the template.
 
 ---
 
@@ -163,9 +176,17 @@ The key is the Latin genus name (first word of the Latin plant name only).
 ```
 streamlit >= 1.28
 pandas >= 2.0
+numpy >= 1.24
 pillow >= 10.0
 openpyxl >= 3.1
+requests >= 2.31
+geopy >= 2.4
+meteostat >= 1.6
+matplotlib >= 3.7
+scikit-learn >= 1.3
 ```
+
+All dependencies are also listed in `requirements.txt` — Streamlit Cloud installs them automatically from that file.
 
 ---
 
