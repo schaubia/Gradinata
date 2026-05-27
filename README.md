@@ -192,7 +192,5 @@ All dependencies are also listed in `requirements.txt` — Streamlit Cloud insta
 
 ## License
 
-© 2025 Dantara Software EOOD. All rights reserved.
-
 Open-Meteo data is used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 PFAF data is used for educational purposes.
