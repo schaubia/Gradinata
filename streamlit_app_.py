@@ -353,9 +353,7 @@ def parse_upload(f):
         if "sun_needed" in df.columns: sun_col = "sun_needed"
         elif "sun" in df.columns: sun_col = "sun"
         else: return None, "File must contain a 'sun_needed' or 'sun' column."
-        df["sun_needed"] = df[sun_col].astype(str).str.strip().str.lower().map(
-            lambda x: SUN_NORM.get(x, SUN_NORM.get(x.split()[0], "full_sun"))
-        )
+        df["sun_needed"] = df[sun_col].astype(str).str.strip().str.lower().map(SUN_NORM)
         if "name" not in df.columns: return None, "File must contain a 'name' column."
         df["name"] = df["name"].astype(str).str.strip()
         for col in ["latin","soil","notes","actual_sun","pruning","feeding","watering",
@@ -575,8 +573,8 @@ with st.sidebar:
                                    key="sidebar_uploader", label_visibility="collapsed")
         if sb_file:
             parsed, err = parse_upload(sb_file)
-            if err or parsed is None:
-                st.error(f"❌ {err or 'Could not parse file — check it has a name column and sun_needed column.'}")
+            if err:
+                st.error(f"❌ {err}")
             else:
                 parsed = add_english_names(parsed)
                 st.session_state.garden_df = parsed
@@ -847,18 +845,6 @@ with tab_compare:
         rec_commons = {norm(r.get(rec_name_col,"")) for _, r in rec_df.iterrows()}
         rec_latins  = {norm(r.get(rec_latin_col,"")) for _, r in rec_df.iterrows()} if rec_latin_col else set()
 
-        def is_match(garden_row):
-            """True if garden plant appears in recommendations (by English name, Latin name, or genus)."""
-            gn = norm(garden_row.get("name_en", garden_row.get("name","")))
-            gl = norm(garden_row.get("latin",""))
-            if gn in rec_commons or (gl and gl in rec_latins):
-                return True
-            if gl:
-                genus = gl.split()[0]
-                if any(genus in rl for rl in rec_latins if rl):
-                    return True
-            return False
-
         def rec_score(garden_row):
             """Return score of the matched recommendation, or None."""
             if not has_plan or rec_df is None: return None
@@ -890,6 +876,18 @@ with tab_compare:
             if rl:
                 genus = rl.split()[0]
                 if any(genus in gl for gl in garden_latins if gl): return True
+            return False
+
+        def is_match(garden_row):
+            """True if garden plant appears in recommendations (by English name, Latin name, or genus)."""
+            gn = norm(garden_row.get("name_en", garden_row.get("name","")))
+            gl = norm(garden_row.get("latin",""))
+            if gn in rec_commons or (gl and gl in rec_latins):
+                return True
+            if gl:
+                genus = gl.split()[0]
+                if any(genus in rl for rl in rec_latins if rl):
+                    return True
             return False
 
         missing_df = rec_df[~rec_df.apply(already_have, axis=1)]
