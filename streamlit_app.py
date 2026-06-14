@@ -1214,24 +1214,27 @@ with tab_sun:
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_grid:
     st.markdown("# 📐 Garden Grid")
-    if not PLANNER_AVAILABLE:
-        st.warning("The Garden Grid requires `garden_planner_core.py`. See the **🗺️ Planning** tab for setup instructions.")
-    elif st.session_state.planner_df is None:
-        st.info("Generate a plan from the **🗺️ Planning** tab — the grid will load automatically.")
+    if st.session_state.plants_df is None:
+        st.info("📂 Upload your plant list via the sidebar to view the garden grid.")
     else:
-        plan_df = st.session_state.planner_df
+        grid_df = st.session_state.plants_df
         impact_level = ""
         if st.session_state.climate_projection:
             proj = st.session_state.climate_projection
             p = proj.get("projection") if isinstance(proj, dict) else proj
             if p: impact_level = getattr(p, "impact_level", "")
-        try:
-            from garden_planner_core import build_planner_html as _build_html
-        except ImportError:
-            _build_html = None
+
+        # Try the full build_planner_html if available AND we have a generated plan
+        _build_html = None
+        if PLANNER_AVAILABLE and st.session_state.planner_df is not None:
+            try:
+                from garden_planner_core import build_planner_html as _build_html
+            except ImportError:
+                _build_html = None
+
         if _build_html:
             try:
-                planner_html = _build_html(plan_df, st.session_state.garden_name, impact_level)
+                planner_html = _build_html(st.session_state.planner_df, st.session_state.garden_name, impact_level)
                 components.html(planner_html, height=950, scrolling=True)
                 st.divider()
                 st.download_button("📥 Download garden grid (HTML)", planner_html,
@@ -1239,10 +1242,51 @@ with tab_grid:
                                    mime="text/html")
             except Exception as e:
                 st.warning(f"Grid could not be rendered: {e}")
-                st.dataframe(plan_df.head(20), use_container_width=True)
+                st.dataframe(grid_df, use_container_width=True)
         else:
-            st.info("Grid will be available once `build_planner_html` is exported from `garden_planner_core`.")
-            st.dataframe(plan_df.head(20), use_container_width=True)
+            # ── Simple card grid for uploaded plants ─────────────────────────
+            st.caption(f"Showing **{len(grid_df)} plants** from your garden.")
+            sun_filter = st.selectbox(
+                "Filter by sun requirement",
+                ["All", "☀️ Full sun", "⛅ Partial shade", "🌑 Full shade"],
+                key="grid_sun_filter"
+            )
+            sun_map = {"☀️ Full sun": "full_sun", "⛅ Partial shade": "partial_shade", "🌑 Full shade": "full_shade"}
+            show_grid = grid_df if sun_filter == "All" else grid_df[grid_df["sun_needed"] == sun_map.get(sun_filter, "")]
+
+            cols_per_row = 4
+            for chunk_start in range(0, len(show_grid), cols_per_row):
+                chunk = show_grid.iloc[chunk_start:chunk_start + cols_per_row]
+                cols = st.columns(cols_per_row)
+                for col, (_, row) in zip(cols, chunk.iterrows()):
+                    sun = str(row.get("sun_needed") or "")
+                    actual = str(row.get("actual_sun") or "")
+                    mtype = sun_mismatch(sun, actual)
+                    border = "#c0392b" if mtype else ("#3d6b1e" if actual else "#ccc")
+                    sun_icon = {"full_sun": "☀️", "partial_shade": "⛅", "full_shade": "🌑"}.get(sun, "")
+                    bulb_icon = " 🫙" if row.get("is_bulb") else ""
+                    latin_str = row.get("latin") or ""
+                    latin_html = (
+                        "<div style='font-size:0.72rem;color:#888;font-style:italic'>"
+                        + latin_str + "</div>"
+                    ) if latin_str else ""
+                    warn_html = (
+                        "<div style='font-size:0.72rem;color:#c0392b;margin-top:3px'>⚠️ Sun mismatch</div>"
+                    ) if mtype else ""
+                    sun_label = SUN_OPTIONS.get(sun, sun or "—")
+                    card_html = (
+                        "<div style='border-left:4px solid " + border + ";background:#f9f6f0;"
+                        "border-radius:8px;padding:10px 12px;margin-bottom:8px;min-height:80px'>"
+                        "<div style='font-weight:600;font-size:0.88rem;color:#1a3a0e'>"
+                        + str(row["name"]) + bulb_icon + "</div>"
+                        + latin_html
+                        + "<div style='font-size:0.78rem;margin-top:4px;color:#555'>"
+                        + sun_icon + " " + sun_label + "</div>"
+                        + warn_html
+                        + "</div>"
+                    )
+                    col.markdown(card_html, unsafe_allow_html=True)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 6 — CLIMATE
@@ -1251,30 +1295,71 @@ with tab_climate:
     st.markdown("# 🌍 Climate Analysis")
     if not PLANNER_AVAILABLE:
         st.warning("Climate analysis requires `climate_projection.py`.")
-    elif st.session_state.climate_projection is None:
-        st.info("Generate a plan from the **🗺️ Planning** tab — climate data will load automatically.")
     else:
+        # Auto-compute projection from current location if not already done
+        if st.session_state.climate_projection is None:
+            loc_c = st.session_state.location
+            try:
+                from climate_projection import get_climate_projection_for_location as _get_proj
+                _proj, _summary = _get_proj(
+                    loc_c["lat"], loc_c["lon"],
+                    current_avg_temp=12.0, current_precip=600,
+                    current_frost_days=30, location_name=loc_c["name"]
+                )
+                st.session_state.climate_projection = {"projection": _proj, "summary": _summary}
+            except Exception as _ce:
+                st.warning(f"Could not compute climate projection: {_ce}")
+
         proj = st.session_state.climate_projection
-        p    = proj.get("projection") if isinstance(proj, dict) else proj
-        if p:
-            impact = getattr(p, "impact_level", "moderate")
-            impact_color = {"low":"#2e7d32","moderate":"#e65100","high":"#b71c1c"}.get(impact,"#555")
-            st.markdown(f"""<div class="climate-info">
-              <strong>Climate impact level:</strong>
-              <span style="color:{impact_color};font-weight:700;font-size:1.1rem">
-                {impact.upper()}
-              </span>
-            </div>""", unsafe_allow_html=True)
-            for attr in ["temperature_change","rainfall_change","growing_season_change","zone_shift","recommendations"]:
-                val = getattr(p, attr, None)
-                if val: st.markdown(f"**{attr.replace('_',' ').title()}:** {val}")
-        st.markdown('<div class="sec-hdr">Current climate</div>', unsafe_allow_html=True)
-        st.markdown(f"**Description:** {st.session_state.climate_desc}")
+        if proj:
+            p       = proj.get("projection") if isinstance(proj, dict) else proj
+            summary = proj.get("summary", {}) if isinstance(proj, dict) else {}
+            if p:
+                impact = getattr(p, "impact_level", "moderate")
+                impact_color = {
+                    "low": "#2e7d32", "moderate": "#e65100",
+                    "high": "#b71c1c", "severe": "#7b0000"
+                }.get(impact, "#555")
+                st.markdown(
+                    "<div class='climate-info'>"
+                    "<strong>5-year climate projection for " + p.location_name + "</strong>"
+                    " &nbsp;·&nbsp; Impact level: "
+                    "<span style='color:" + impact_color + ";font-weight:700'>" + impact.upper() + "</span>"
+                    " &nbsp;·&nbsp; Confidence: <em>" + p.confidence + "</em>"
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Temp change", f"+{p.temp_change}°C",
+                          f"range +{p.temp_change_min}–{p.temp_change_max}°C")
+                c2.metric("Precip change", f"{p.precip_change:+.1f}%")
+                c3.metric("Growing season", f"+{p.growing_season_change} days")
+                c4.metric("Frost days", f"{p.frost_days_change} days/yr")
+
+                st.divider()
+                for key, label in [
+                    ("temperature",           "🌡️ Temperature"),
+                    ("precipitation",         "🌧️ Precipitation"),
+                    ("growing_season",        "🌱 Growing season"),
+                    ("extreme_events",        "⚡ Extreme events"),
+                    ("gardening_implications","🌿 For your garden"),
+                ]:
+                    val = summary.get(key)
+                    if val:
+                        st.markdown(f"**{label}:** {val}")
+        else:
+            st.info("Climate projection could not be loaded.")
+
+        st.markdown('<div class="sec-hdr">Current conditions</div>', unsafe_allow_html=True)
+        st.markdown(f"**Climate:** {st.session_state.climate_desc}")
         if wx.get("ok"):
             c1, c2, c3 = st.columns(3)
             c1.metric("Min temp (7 days)", f"{min(wx['mins'])}°C")
             c2.metric("Max temp (7 days)", f"{max(wx['maxs'])}°C")
             c3.metric("Rainfall (7 days)", f"{wx['weekly_rain']:.0f} mm")
+        else:
+            st.caption("Weather data unavailable — click Refresh weather in the sidebar.")
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 7 — TEMPLATE
