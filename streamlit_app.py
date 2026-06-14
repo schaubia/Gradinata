@@ -252,7 +252,7 @@ def render_tasks_by_type(tasks, month_name=""):
 def require_plants() -> bool:
     """Returns True if plants are loaded, False (with info message) if not."""
     if st.session_state.plants_df is None:
-        st.info("📂 Upload your plant list via the sidebar, or generate plants from the **🗺️ Planning** tab first.")
+        st.info("📂 Upload your plant list via the sidebar to get started — no plan generation needed.")
         return False
     return True
 
@@ -523,6 +523,7 @@ for k, v in [
     ("planner_df",         None),
     ("climate_projection", None),
     ("garden_name",        "My Garden"),
+    ("active_source",       None),
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -542,36 +543,19 @@ with st.sidebar:
     st.caption(f"📍 {loc['name']}, {loc['country']}")
     st.divider()
 
-    # ── Section 1: Generated plan ─────────────────────────────────────────────
-    st.markdown("**🗺️ Generated plan**")
-    if st.session_state.plants_from_plan and st.session_state.plants_df is not None:
-        plan_count = len(st.session_state.plants_df)
-        st.success(f"✅ {plan_count} plants generated")
-        if st.button("✕ Clear plan", use_container_width=True, key="clear_plan"):
-            st.session_state.plants_df = None
-            st.session_state.plants_from_plan = False
-            st.session_state.planner_df = None
-            st.session_state.planner_results = None
-            st.session_state.climate_projection = None
-            st.rerun()
-    else:
-        st.caption("Generate from the **🗺️ Planning** tab")
-
-    st.divider()
-
-    # ── Section 2: Your existing garden (CSV upload) ───────────────────────────
-    st.markdown("**📂 Your existing garden**")
+    # ── Section 1: Your garden (CSV upload) — always first ──────────────────
+    st.markdown("**📂 Your garden**")
     garden_count = len(st.session_state.garden_df) if st.session_state.garden_df is not None else 0
     if garden_count:
-        st.success(f"✅ {garden_count} plants uploaded")
-        if st.button("✕ Clear upload", use_container_width=True, key="clear_upload"):
+        st.success(f"✅ {garden_count} plants loaded")
+        if st.button("✕ Remove upload", use_container_width=True, key="clear_upload"):
             st.session_state.garden_df = None
-            # If no generated plan, also clear plants_df
-            if not st.session_state.plants_from_plan:
+            if st.session_state.get("active_source") == "upload":
                 st.session_state.plants_df = None
+                st.session_state.active_source = None
             st.rerun()
     else:
-        sb_file = st.file_uploader("CSV or XLSX", type=["csv","xlsx","xls"],
+        sb_file = st.file_uploader("Upload CSV or XLSX", type=["csv","xlsx","xls"],
                                    key="sidebar_uploader", label_visibility="collapsed")
         if sb_file:
             parsed, err = parse_upload(sb_file)
@@ -580,11 +564,56 @@ with st.sidebar:
             else:
                 parsed = add_english_names(parsed)
                 st.session_state.garden_df = parsed
-                # Use as care source only if no generated plan
-                if not st.session_state.plants_from_plan:
-                    st.session_state.plants_df = parsed
+                st.session_state.plants_df = parsed
+                st.session_state.active_source = "upload"
                 st.rerun()
-        st.caption("Used for **🔍 Compare** and care schedule (if no plan)")
+        st.caption("All tabs (Dashboard, Care, Sun Setup, Grid) work with your uploaded plants — no plan needed.")
+
+    st.divider()
+
+    # ── Section 2: Generated plan ─────────────────────────────────────────────
+    st.markdown("**🗺️ Generated plan**")
+    has_plan_sidebar = st.session_state.plants_from_plan and st.session_state.planner_df is not None
+    if has_plan_sidebar:
+        plan_count = len(st.session_state.planner_df)
+        st.success(f"✅ {plan_count} plants generated")
+        if st.button("✕ Clear plan", use_container_width=True, key="clear_plan"):
+            st.session_state.plants_from_plan = False
+            st.session_state.planner_df = None
+            st.session_state.planner_results = None
+            st.session_state.climate_projection = None
+            if st.session_state.get("active_source") == "plan":
+                if st.session_state.garden_df is not None:
+                    st.session_state.plants_df = st.session_state.garden_df
+                    st.session_state.active_source = "upload"
+                else:
+                    st.session_state.plants_df = None
+                    st.session_state.active_source = None
+            st.rerun()
+    else:
+        st.caption("Generate from the **🗺️ Planning** tab")
+
+    # ── Active source toggle (shown only when BOTH are loaded) ────────────────
+    if garden_count and has_plan_sidebar:
+        st.divider()
+        st.markdown("**📌 Tabs are showing:**")
+        current_src = st.session_state.get("active_source", "upload")
+        choice = st.radio(
+            "Active source",
+            ["upload", "plan"],
+            format_func=lambda x: "📂 My uploaded garden" if x == "upload" else "🗺️ Generated plan",
+            index=0 if current_src == "upload" else 1,
+            key="source_radio",
+            label_visibility="collapsed",
+        )
+        if choice != current_src:
+            st.session_state.active_source = choice
+            if choice == "upload":
+                st.session_state.plants_df = st.session_state.garden_df
+            else:
+                care_df = sync_plan_to_care(st.session_state.planner_df)
+                st.session_state.plants_df = care_df
+            st.rerun()
 
     st.divider()
 
@@ -714,8 +743,12 @@ with tab_plan:
                     # ── THE BRIDGE ──────────────────────────────────────────
                     care_df = sync_plan_to_care(df_plan)
                     if care_df is not None:
-                        st.session_state.plants_df = care_df
                         st.session_state.plants_from_plan = True
+                        # Only switch active source to plan if no upload exists
+                        if st.session_state.garden_df is None:
+                            st.session_state.plants_df = care_df
+                            st.session_state.active_source = "plan"
+                        # If upload exists, keep it active — user can switch via sidebar toggle
                     try:
                         from climate_projection import get_climate_projection_for_location as _get_proj
                         proj, summary = _get_proj(latitude, longitude,
