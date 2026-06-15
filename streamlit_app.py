@@ -348,29 +348,52 @@ def parse_upload(f):
     try:
         nm = f.name.lower()
         df = pd.read_csv(f) if nm.endswith(".csv") else pd.read_excel(f)
+        # Normalise column names
         df.columns = [c.strip().lower().replace(" ","_") for c in df.columns]
         df = df.where(pd.notna(df), None)
-        if "sun_needed" in df.columns: sun_col = "sun_needed"
-        elif "sun" in df.columns: sun_col = "sun"
-        else: return None, "File must contain a 'sun_needed' or 'sun' column."
-        df["sun_needed"] = df[sun_col].astype(str).str.strip().str.lower().map(
-            lambda x: SUN_NORM.get(x, SUN_NORM.get(x.split()[0], "full_sun"))
-        )
-        if "name" not in df.columns: return None, "File must contain a 'name' column."
+
+        # ── Find name column (required) ───────────────────────────────────────
+        name_candidates = ["name","plant_name","plant","naziv","ime","наименование","растение","name_bg"]
+        name_col = next((c for c in name_candidates if c in df.columns), None)
+        if name_col is None:
+            # Try first text column
+            text_cols = [c for c in df.columns if df[c].dtype == object]
+            if text_cols:
+                name_col = text_cols[0]
+            else:
+                return None, f"Cannot find a name column. Columns found: {list(df.columns)}"
+        if name_col != "name":
+            df = df.rename(columns={name_col: "name"})
         df["name"] = df["name"].astype(str).str.strip()
+
+        # ── Find sun column (optional — default to full_sun if missing) ───────
+        sun_candidates = ["sun_needed","sun","sun_exposure","sunlight","слънце","слънчева_нужда","sun_req"]
+        sun_col = next((c for c in sun_candidates if c in df.columns), None)
+        if sun_col:
+            df["sun_needed"] = df[sun_col].astype(str).str.strip().str.lower().map(
+                lambda x: SUN_NORM.get(x, SUN_NORM.get(x.split()[0], "full_sun"))
+            )
+        else:
+            df["sun_needed"] = "full_sun"  # safe default, user can fix in Sun Setup tab
+
+        # ── Ensure optional columns exist ─────────────────────────────────────
         for col in ["latin","soil","notes","actual_sun","pruning","feeding","watering",
                     "pruning_months","feeding_months","water_freq"]:
             if col not in df.columns: df[col] = None
+
         df["is_bulb"] = df.get("is_bulb", pd.Series([False]*len(df))).apply(
             lambda x: str(x).strip().lower() in ("yes","true","1") if x else False)
+
+        # ── Auto-fill care data from built-in database ────────────────────────
         for i, row in df.iterrows():
             if not row.get("pruning"):
                 care = lookup_care(row.get("latin"))
                 for k in ["pruning","feeding","watering","pruning_months","feeding_months","water_freq"]:
                     df.at[i, k] = care[k]
+
         return df, ""
     except Exception as e:
-        return None, str(e)
+        return None, f"Parse error: {e} — columns in file: {list(df.columns) if 'df' in dir() else 'file could not be read'}"
 
 
 
@@ -544,6 +567,13 @@ with st.sidebar:
     st.divider()
 
     # ── Section 1: Your garden (CSV upload) — always first ──────────────────
+    # KEY FIX: if garden_df is loaded but plants_df got lost (e.g. after page reload),
+    # restore plants_df immediately so all tabs have data.
+    if (st.session_state.garden_df is not None
+            and st.session_state.plants_df is None
+            and st.session_state.get("active_source") != "plan"):
+        st.session_state.plants_df = st.session_state.garden_df
+
     st.markdown("**📂 Your garden**")
     garden_count = len(st.session_state.garden_df) if st.session_state.garden_df is not None else 0
     if garden_count:
@@ -560,14 +590,20 @@ with st.sidebar:
         if sb_file:
             parsed, err = parse_upload(sb_file)
             if err or parsed is None:
-                st.error(f"❌ {err or 'Could not parse file — check it has a name column and sun_needed column.'}")
+                st.error(f"❌ Upload failed: {err or 'Unknown error'}")
+                with st.expander("🔍 Debug info"):
+                    st.write("Error:", err)
+                    st.write("Parsed is None:", parsed is None)
             else:
-                parsed = add_english_names(parsed)
+                try:
+                    parsed = add_english_names(parsed)
+                except Exception as e_en:
+                    st.warning(f"English name lookup failed (non-critical): {e_en}")
                 st.session_state.garden_df = parsed
                 st.session_state.plants_df = parsed
                 st.session_state.active_source = "upload"
                 st.rerun()
-        st.caption("All tabs (Dashboard, Care, Sun Setup, Grid) work with your uploaded plants — no plan needed.")
+        st.caption("All tabs work with your uploaded plants — no plan needed.")
 
     st.divider()
 
