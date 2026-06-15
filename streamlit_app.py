@@ -757,7 +757,7 @@ with tab_plan:
                 )
                 if pfaf_csv is None:
                     st.error("❌ No plant CSV found. Add your PFAF CSV file to the repository.")
-                    st.stop()
+                    pfaf_csv = None  # handled below
 
                 planner = GardenPlanner()
                 planner.initialize(pfaf_csv)
@@ -898,7 +898,6 @@ with tab_compare:
     if not has_plan or not has_garden:
         st.info("Both sources are needed for a full comparison. "
                 "You can do them in any order.")
-        st.stop()
 
     if has_plan and has_garden:
         rec_df    = st.session_state.planner_df.copy()
