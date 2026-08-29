@@ -31,6 +31,8 @@ README.md                 ← this file
 
 > **Important:** `garden_planner_core.py`, `climate_projection.py`, and the PFAF CSV must all be in the same folder as `streamlit_app.py`. Without them the 🗺️ Planning, 🔍 Compare, 📐 Garden Grid, and 🌍 Climate tabs will not work, but all other tabs (Dashboard, Care Schedule, Sun Setup, Template) are fully functional on their own.
 
+> **PFAF file naming:** the app auto-detects the plant database by scanning `*.csv` in the app folder. It looks for a filename containing `pfaf` (falling back to `database`/`flora`, then any CSV) whose header row actually contains `latin_name` and `common_name` columns, and it always **skips** any file whose name contains `garden`, `clean`, `template`, or starts with `my_` — those are treated as personal plant-list uploads, not the database. Keep the PFAF file named with `pfaf` in it (e.g. `pfaf_plants.csv`, `pfaf2.csv`) and keep your own exported/uploaded garden CSVs named like `my_garden_*.csv` so the two are never confused.
+
 ---
 
 ## Installation
@@ -168,6 +170,23 @@ The care database lives in the `CARE_DB` dictionary in `streamlit_app.py`. To ad
 ```
 
 The key is the Latin genus name (first word of the Latin plant name only). BG names present if in the template.
+
+---
+
+## Troubleshooting
+
+### Planning tab shows "Unknown — Unknown" for every plant, all with the same score
+
+This means the app loaded the wrong CSV as the plant database — almost always because a personal garden-upload file (e.g. `my_garden_plants.csv`) also matched the old filename-only detection logic, since it contains the substring `plant`. The current version fixes this two ways:
+
+- Filenames containing `garden`, `clean`, `template`, or starting with `my_` are **never** treated as the plant database.
+- Before accepting a candidate file, the app reads its header row and requires both `latin_name` and `common_name` columns to be present.
+
+If you still hit this, check that your real PFAF CSV is in the same folder as `streamlit_app.py` and that its header row actually uses `latin_name`/`common_name` (not e.g. `Latin`/`Common` or `latin`/`name`) — rename the columns if needed.
+
+### A literal `</div>` appears in Compare tab cards
+
+Fixed in the current version. It was caused by conditional HTML fragments (e.g. a shade tag or a translation note) sitting on their own line inside a multi-line HTML string passed to `st.markdown`. When the condition was false, that line went blank, which made Streamlit's Markdown parser exit "raw HTML" mode mid-block and print the next closing tag as literal text instead of parsing it. The fix collapses each card's HTML into a single line so no blank line can appear regardless of which fields are empty. If you add new card-style `st.markdown(..., unsafe_allow_html=True)` blocks with conditional fragments, keep them on one line (or build the string as a single concatenated line) to avoid the same issue.
 
 ---
 
