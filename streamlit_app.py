@@ -747,17 +747,53 @@ with tab_plan:
         st.session_state.garden_name = garden_name
         with st.spinner("🌍 Analysing climate and soil data…"):
             try:
-                # Locate the PFAF CSV — try common filenames
+                # Locate the PFAF CSV — try common filenames, but never a user-uploaded
+                # garden list, and always verify the file actually has the right columns.
                 import glob
-                csv_candidates = glob.glob("*.csv") + glob.glob("data/*.csv") + glob.glob("data/raw/*.csv")
-                pfaf_csv = next(
-                    (f for f in csv_candidates
-                     if any(k in f.lower() for k in ["pfaf","plant","database","flora"])),
-                    csv_candidates[0] if csv_candidates else None
+
+                def _is_user_upload(fname):
+                    base = os.path.basename(fname).lower()
+                    return any(k in base for k in ["garden", "clean", "template"]) or base.startswith("my_")
+
+                def _has_plant_columns(fname):
+                    try:
+                        cols = set(pd.read_csv(fname, nrows=1).columns.str.lower())
+                        return {"latin_name", "common_name"}.issubset(cols)
+                    except Exception:
+                        return False
+
+                csv_candidates = sorted(
+                    glob.glob("*.csv") + glob.glob("data/*.csv") + glob.glob("data/raw/*.csv")
                 )
+
+                # Priority 1: filename contains "pfaf", not a user upload, valid columns
+                pfaf_candidates = [
+                    f for f in csv_candidates
+                    if "pfaf" in f.lower() and not _is_user_upload(f) and _has_plant_columns(f)
+                ]
+                # Priority 2: "database" / "flora" in filename
+                if not pfaf_candidates:
+                    pfaf_candidates = [
+                        f for f in csv_candidates
+                        if any(k in f.lower() for k in ["database", "flora"])
+                        and not _is_user_upload(f) and _has_plant_columns(f)
+                    ]
+                # Last resort: any CSV (excluding user uploads) that has the right columns
+                if not pfaf_candidates:
+                    pfaf_candidates = [
+                        f for f in csv_candidates
+                        if not _is_user_upload(f) and _has_plant_columns(f)
+                    ]
+
+                pfaf_csv = pfaf_candidates[0] if pfaf_candidates else None
+
                 if pfaf_csv is None:
-                    st.error("❌ No plant CSV found. Add your PFAF CSV file to the repository.")
-                    pfaf_csv = None  # handled below
+                    st.error(
+                        "❌ No valid plant database CSV found (needs `latin_name` / `common_name` "
+                        "columns). Add your PFAF CSV file to the repository."
+                    )
+                elif len(pfaf_candidates) > 1:
+                    st.info(f"ℹ️ Using `{pfaf_csv}` as the plant database. Other candidates found: {pfaf_candidates[1:]}")
 
                 planner = GardenPlanner()
                 planner.initialize(pfaf_csv)
