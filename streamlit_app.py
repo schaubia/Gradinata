@@ -1034,12 +1034,12 @@ with tab_compare:
                                   f"→ {name_en}</span>"
                                   if name_en and name_en != name_disp else "")
                     st.markdown(
-                        f'''<div style="background:#f0f7e8;border-left:3px solid #3d6b1e;
-                        border-radius:8px;padding:9px 14px;margin-bottom:6px">
-                        <span style="font-weight:600;color:#1a3a0e">{name_disp}</span>
-                        {trans_note}{score_badge}
-                        <span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>
-                        </div>''', unsafe_allow_html=True)
+                        f'<div style="background:#f0f7e8;border-left:3px solid #3d6b1e;'
+                        f'border-radius:8px;padding:9px 14px;margin-bottom:6px">'
+                        f'<span style="font-weight:600;color:#1a3a0e">{name_disp}</span>'
+                        f'{trans_note}{score_badge}'
+                        f'<span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>'
+                        f'</div>', unsafe_allow_html=True)
 
         # ── Right: top missing ───────────────────────────────────────────────
         with col_r:
@@ -1057,14 +1057,16 @@ with tab_compare:
                     shade = FIELD_EXPLANATIONS["Shade"].get(str(row.get("shade","")).strip(),"")
                     score_badge = (f"<span style='float:right;color:#2E7D32;font-weight:600'>{score:.2f}</span>"
                                    if score else "")
+                    shade_html = (f"<br><span style='font-size:0.75rem;color:#555'>🌤️ {shade}</span>"
+                                  if shade else "")
                     st.markdown(
-                        f'''<div style="background:#e8f1fb;border-left:3px solid #1a5a8a;
-                        border-radius:8px;padding:9px 14px;margin-bottom:6px">
-                        {score_badge}
-                        <span style="font-weight:600;color:#0d2d4e">{name}</span>
-                        <span style="font-size:0.75rem;color:#888;margin-left:6px;font-style:italic">{latin}</span>
-                        {"<br><span style='font-size:0.75rem;color:#555'>🌤️ " + shade + "</span>" if shade else ""}
-                        </div>''', unsafe_allow_html=True)
+                        f'<div style="background:#e8f1fb;border-left:3px solid #1a5a8a;'
+                        f'border-radius:8px;padding:9px 14px;margin-bottom:6px">'
+                        f'{score_badge}'
+                        f'<span style="font-weight:600;color:#0d2d4e">{name}</span>'
+                        f'<span style="font-size:0.75rem;color:#888;margin-left:6px;font-style:italic">{latin}</span>'
+                        f'{shade_html}'
+                        f'</div>', unsafe_allow_html=True)
 
         # ── Bottom: plants not in recommendations ────────────────────────────
         if len(not_in_rec) > 0:
@@ -1078,12 +1080,12 @@ with tab_compare:
                     trans2 = (f"<span style='font-size:0.72rem;color:#888;margin-left:6px'>→ {name_en2}</span>"
                               if name_en2 and name_en2 != name_disp2 else "")
                     st.markdown(
-                        f'''<div style="background:#f5f5f5;border-left:3px solid #aaa;
-                        border-radius:8px;padding:8px 14px;margin-bottom:5px">
-                        <span style="font-weight:500;color:#444">{name_disp2}</span>
-                        {trans2}
-                        <span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>
-                        </div>''', unsafe_allow_html=True)
+                        f'<div style="background:#f5f5f5;border-left:3px solid #aaa;'
+                        f'border-radius:8px;padding:8px 14px;margin-bottom:5px">'
+                        f'<span style="font-weight:500;color:#444">{name_disp2}</span>'
+                        f'{trans2}'
+                        f'<span style="font-size:0.78rem;color:#888;margin-left:8px">{sun}</span>'
+                        f'</div>', unsafe_allow_html=True)
 
         # ── Download comparison ──────────────────────────────────────────────
         st.divider()
