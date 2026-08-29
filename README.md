@@ -1,7 +1,7 @@
 # 🌿 Gradinata
 
 **Smart Garden Assistant**
-Plan new plants, manage care for existing ones, and track climate projections — all in one place.
+Plan new plants, manage care for existing ones, and track climate projections.
 
 ---
 
@@ -9,11 +9,11 @@ Plan new plants, manage care for existing ones, and track climate projections �
 
 Gradinata consolidates two standalone projects into one product:
 
-- **Planning** — enter your garden's GPS coordinates and receive personalised plant recommendations based on real climate data, soil conditions, and climate projections
-- **Compare** — see which recommended plants you already grow, which top picks you're missing, and which of your existing plants didn't make the list
-- **Care** — load your plant list and get a concrete schedule: when to prune, feed, and water, with automatic weather alerts for frost, drought, and high UV
+- **Planning** - enter your garden's GPS coordinates and receive personalised plant recommendations based on real climate data, soil conditions, and climate projections
+- **Compare** - see which recommended plants you already grow, which top picks you're missing, and which of your existing plants didn't make the list
+- **Care** - load your plant list and get a concrete schedule: when to prune, feed, and water, with automatic weather alerts for frost, drought, and high UV
 
-The key connection between the modules: once you generate a plan, the plants are automatically loaded into the care schedule — no manual entry required. Upload your existing plant list separately to unlock the Compare tab.
+The key connection between the modules: once you generate a plan, the plants are automatically loaded into the care schedule - no manual entry required. Upload your existing plant list separately to unlock the Compare tab.
 
 ---
 
@@ -31,7 +31,7 @@ README.md                 ← this file
 
 > **Important:** `garden_planner_core.py`, `climate_projection.py`, and the PFAF CSV must all be in the same folder as `streamlit_app.py`. Without them the 🗺️ Planning, 🔍 Compare, 📐 Garden Grid, and 🌍 Climate tabs will not work, but all other tabs (Dashboard, Care Schedule, Sun Setup, Template) are fully functional on their own.
 
-> **PFAF file naming:** the app auto-detects the plant database by scanning `*.csv` in the app folder. It looks for a filename containing `pfaf` (falling back to `database`/`flora`, then any CSV) whose header row actually contains `latin_name` and `common_name` columns, and it always **skips** any file whose name contains `garden`, `clean`, `template`, or starts with `my_` — those are treated as personal plant-list uploads, not the database. Keep the PFAF file named with `pfaf` in it (e.g. `pfaf_plants.csv`, `pfaf2.csv`) and keep your own exported/uploaded garden CSVs named like `my_garden_*.csv` so the two are never confused.
+> **PFAF file naming:** the app auto-detects the plant database by scanning `*.csv` in the app folder. It looks for a filename containing `pfaf` (falling back to `database`/`flora`, then any CSV) whose header row actually contains `latin_name` and `common_name` columns, and it always **skips** any file whose name contains `garden`, `clean`, `template`, or starts with `my_` - those are treated as personal plant-list uploads, not the database. Keep the PFAF file named with `pfaf` in it (e.g. `pfaf_plants.csv`, `pfaf2.csv`) and keep your own exported/uploaded garden CSVs named like `my_garden_*.csv` so the two are never confused.
 
 ---
 
@@ -75,11 +75,11 @@ Enter coordinates (latitude/longitude) and preferences, click **Generate**, and 
 
 ### 🔍 Compare
 Compare the AI recommendations against your existing plant list (uploaded via the sidebar):
-- **Summary metrics** — how many of your plants are recommended, how many top picks you're missing, and what percentage of your garden matches the recommendations
-- **Already have** — your plants that appear in the recommendations, sorted by suitability score
-- **Top plants to add** — highest-scoring recommendations you don't currently grow
-- **Not recommended** — your plants that didn't rank for your location (may still be perfectly fine)
-- **Download** — export the full comparison as CSV
+- **Summary metrics** - how many of your plants are recommended, how many top picks you're missing, and what percentage of your garden matches the recommendations
+- **Already have** - your plants that appear in the recommendations, sorted by suitability score
+- **Top plants to add** - highest-scoring recommendations you don't currently grow
+- **Not recommended** - your plants that didn't rank for your location (may still be perfectly fine)
+- **Download** - export the full comparison as CSV
 
 > To use Compare, generate a plan from Planning **and** upload your existing plants separately via the sidebar. Plants loaded automatically from Planning won't be used as the "existing garden" for comparison.
 
@@ -91,9 +91,9 @@ Compare the AI recommendations against your existing plant list (uploaded via th
 
 ### 📋 Care Schedule
 Three views:
-- **By month** — all tasks for a selected month
-- **By plant** — full care card with pruning, feeding, and watering instructions
-- **Mismatches only** — plants placed in the wrong light conditions
+- **By month** - all tasks for a selected month
+- **By plant** - full care card with pruning, feeding, and watering instructions
+- **Mismatches only** - plants placed in the wrong light conditions
 
 ### ☀️ Sun Setup
 Assign the actual sun exposure for each plant (full sun / partial shade / full shade). The app compares this against the plant's requirements and flags any mismatches.
@@ -102,7 +102,7 @@ Assign the actual sun exposure for each plant (full sun / partial shade / full s
 A visual drag-and-drop garden grid, colour-coded by companion planting clusters. Download as a standalone HTML file that works offline.
 
 ### 🌍 Climate
-Climate projection for your area based on IPCC data — expected changes in temperature, rainfall, and growing season length.
+Climate projection for your area based on IPCC data - expected changes in temperature, rainfall, and growing season length.
 
 ### ⬇️ Template
 A CSV template for manually entering your plant list. Download, fill in, upload via the sidebar.
@@ -111,13 +111,13 @@ A CSV template for manually entering your plant list. Download, fill in, upload 
 
 ## Loading plants
 
-**Option A — from Planning (recommended)**
+**Option A - from Planning (recommended)**
 1. Open the 🗺️ Planning tab
 2. Enter your garden's coordinates
 3. Click **Generate**
 4. Plants load automatically into the Care Schedule
 
-**Option B — manual CSV upload**
+**Option B - manual CSV upload**
 1. Download the template from the ⬇️ Template tab
 2. Fill in the `name` and `sun_needed` columns (required)
 3. Upload the file via the sidebar
@@ -130,11 +130,11 @@ A CSV template for manually entering your plant list. Download, fill in, upload 
 |---|---|---|---|
 | `name` | ✅ | free text | Lavender |
 | `sun_needed` | ✅ | `full_sun` / `partial_shade` / `full_shade` | `full_sun` |
-| `latin` | — | Latin genus and species | `Lavandula angustifolia` |
-| `actual_sun` | — | same as sun_needed | `full_sun` |
-| `soil` | — | `well_drained`, `moist`, `clay`, `sandy`, `rich` | `well_drained` |
-| `is_bulb` | — | `yes` / `no` | `no` |
-| `notes` | — | free text | |
+| `latin` | - | Latin genus and species | `Lavandula angustifolia` |
+| `actual_sun` | - | same as sun_needed | `full_sun` |
+| `soil` | - | `well_drained`, `moist`, `clay`, `sandy`, `rich` | `well_drained` |
+| `is_bulb` | - | `yes` / `no` | `no` |
+| `notes` | - | free text | |
 
 If `pruning`, `feeding`, and `watering` columns are absent, they are filled automatically from the built-in database covering 60+ plant genera.
 
@@ -148,7 +148,7 @@ If `pruning`, `feeding`, and `watering` columns are absent, they are filled auto
 | Geocoding | Open-Meteo Geocoding API | On search |
 | Plant database | PFAF (Plants for a Future) | Built-in |
 | Climate projections | IPCC data | Built-in |
-| Care instructions | Botanical care database — 60+ genera | Built-in |
+| Care instructions | Botanical care database - 60+ genera | Built-in |
 
 An internet connection is required only for live weather and geocoding. Everything else runs locally.
 
@@ -175,14 +175,14 @@ The key is the Latin genus name (first word of the Latin plant name only). BG na
 
 ## Troubleshooting
 
-### Planning tab shows "Unknown — Unknown" for every plant, all with the same score
+### Planning tab shows "Unknown - Unknown" for every plant, all with the same score
 
-This means the app loaded the wrong CSV as the plant database — almost always because a personal garden-upload file (e.g. `my_garden_plants.csv`) also matched the old filename-only detection logic, since it contains the substring `plant`. The current version fixes this two ways:
+This means the app loaded the wrong CSV as the plant database - almost always because a personal garden-upload file (e.g. `my_garden_plants.csv`) also matched the old filename-only detection logic, since it contains the substring `plant`. The current version fixes this two ways:
 
 - Filenames containing `garden`, `clean`, `template`, or starting with `my_` are **never** treated as the plant database.
 - Before accepting a candidate file, the app reads its header row and requires both `latin_name` and `common_name` columns to be present.
 
-If you still hit this, check that your real PFAF CSV is in the same folder as `streamlit_app.py` and that its header row actually uses `latin_name`/`common_name` (not e.g. `Latin`/`Common` or `latin`/`name`) — rename the columns if needed.
+If you still hit this, check that your real PFAF CSV is in the same folder as `streamlit_app.py` and that its header row actually uses `latin_name`/`common_name` (not e.g. `Latin`/`Common` or `latin`/`name`) - rename the columns if needed.
 
 ### A literal `</div>` appears in Compare tab cards
 
@@ -205,7 +205,7 @@ matplotlib >= 3.7
 scikit-learn >= 1.3
 ```
 
-All dependencies are also listed in `requirements.txt` — Streamlit Cloud installs them automatically from that file.
+All dependencies are also listed in `requirements.txt`. Streamlit Cloud installs them automatically from that file.
 
 ---
 
